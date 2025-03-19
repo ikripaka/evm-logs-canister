@@ -43,7 +43,9 @@ fn estimate_cycles_used(
   total_cycles_used
 }
 
-fn charge_subscribers(addresses_amound: usize, cycles_used: u64) {
+// this charge is for fetching logs from ethereum
+// it is not related to charging subscribers for logs they receive
+fn charge_subscribers_for_logs_fetching(addresses_amound: usize, cycles_used: u64) {
   let subscriptions = get_state_value!(subscriptions);
 
   // charge subscribers accordingly to amount addresses in their filters
@@ -117,7 +119,7 @@ pub async fn fetch_logs(
   // after sending request we need to charge cycles for each subscriber accordingly
   // to amount of their subscribtion addresses(filters)
   // note: later events_publisher will charge cycles accordingly to amount of logs received by each subscriber
-  charge_subscribers(addresses.len(), total_cycles_used);
+  charge_subscribers_for_logs_fetching(addresses.len(), total_cycles_used);
 
   Ok(merged_logs)
 }

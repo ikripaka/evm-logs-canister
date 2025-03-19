@@ -12,6 +12,27 @@ use serde::Deserialize;
 struct PerChainData {
   addresses: HashMap<String, Nat>,
   first_position_topics: HashMap<String, Nat>,
+
+  // Cached values for fast access
+  cached_addresses: Vec<String>,
+  cached_topics: Option<Vec<Vec<String>>>,
+}
+
+impl PerChainData {
+  /// Recomputes the cached values for addresses and topics.
+  /// - `addresses`: all active addresses
+  /// - `topics`: if the first_position_topics is empty => None
+  ///             otherwise => Some([ list_of_topics ])
+  fn update_cache(&mut self) {
+    self.cached_addresses = self.addresses.keys().cloned().collect();
+
+    let topics_collected: Vec<String> = self.first_position_topics.keys().cloned().collect();
+    self.cached_topics = if topics_collected.is_empty() {
+      None
+    } else {
+      Some(vec![topics_collected])
+    };
+  }
 }
 
 /// A main FilterManager that stores PerChainData for each `chain_id`.
@@ -55,6 +76,8 @@ impl FilterManager {
         }
       }
     }
+    // Update cached values
+    chain_data.update_cache();
   }
 
   /// Removes a filter (subscription) from the manager for a specific `chain_id`.
@@ -88,6 +111,8 @@ impl FilterManager {
           }
         }
       }
+      // Update cached values
+      chain_data.update_cache();
     }
   }
 
@@ -97,20 +122,7 @@ impl FilterManager {
   ///             otherwise => Some([ list_of_topics ])
   pub fn get_active_addresses_and_topics(&self, chain_id: u32) -> (Vec<String>, Option<Vec<Vec<String>>>) {
     if let Some(chain_data) = self.get_chain_data(chain_id) {
-      // Gather addresses
-      let addresses = chain_data.addresses.keys().cloned().collect::<Vec<_>>();
-
-      // Gather topics from the first position
-      let topics_collected = chain_data.first_position_topics.keys().cloned().collect::<Vec<_>>();
-
-      // If we have no topics, return None; otherwise wrap them in a single Vec
-      let topics = if topics_collected.is_empty() {
-        None
-      } else {
-        Some(vec![topics_collected])
-      };
-
-      (addresses, topics)
+      (chain_data.cached_addresses.clone(), chain_data.cached_topics.clone())
     } else {
       (Vec::new(), None)
     }

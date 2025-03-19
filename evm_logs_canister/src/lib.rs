@@ -26,12 +26,9 @@ use crate::{
 
 thread_local! {
     pub static STATE: RefCell<State> = RefCell::default();
-
     pub static NEXT_SUBSCRIPTION_ID: RefCell<Nat> = RefCell::new(Nat::from(1u32));
     pub static NEXT_NOTIFICATION_ID: RefCell<Nat> = RefCell::new(Nat::from(1u32));
-
     pub static FILTERS_MANAGER: RefCell<FilterManager> = RefCell::new(FilterManager::default());
-
     pub static CHAIN_SERVICES: RefCell<Vec<Rc<ChainService>>> = const {RefCell::new(Vec::new())};
 }
 

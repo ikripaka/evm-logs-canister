@@ -16,16 +16,14 @@ pub struct State {
   pub subscribers: HashMap<Principal, Vec<Nat>>,
   pub user_balances: Balances,
   pub max_response_bytes: u32,
+  pub cycles_per_event: u64,
   pub test: u32,
 }
 
 pub fn init(config: Config) {
   STATE.with(|state| {
     let mut state = state.borrow_mut();
-    state.evm_rpc_canister = config.evm_rpc_canister;
-    state.proxy_canister = config.proxy_canister;
-    state.estimate_events_num = config.estimate_events_num;
-    state.max_response_bytes = config.max_response_bytes;
+    *state = State::from(config);
   });
 }
 
@@ -39,7 +37,19 @@ impl Default for State {
       subscribers: HashMap::new(),
       user_balances: Balances::default(),
       max_response_bytes: 1_000_000,
+      cycles_per_event: 10_000_000_000,
       test: 0,
     }
+  }
+}
+
+impl From<Config> for State {
+  fn from(value: Config) -> Self {
+    let mut state = Self::default();
+    state.evm_rpc_canister = value.evm_rpc_canister;
+    state.proxy_canister = value.proxy_canister;
+    state.estimate_events_num = value.estimate_events_num;
+    state.max_response_bytes = value.max_response_bytes;
+    state
   }
 }

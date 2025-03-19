@@ -41,10 +41,13 @@ async fn distribute_event(event: Event) {
       .cloned()
       .collect::<Vec<_>>()
   });
-  // this amount is a minimum required for subscriber to have, otherwise event won't be send
+
   // Estimate the cycles required per event notification
   let event_size = std::mem::size_of::<EventNotification>(); // Estimate the size of EventNotification in bytes
-  let estimated_cycles_for_event = estimate_cycles_for_event_notification(event_size);
+  let estimated_cycles_for_event_send = estimate_cycles_for_event_notification(event_size);
+
+  // this amount is calculated as a sum of cycles for sending event and processing it on evm-logs-canister side
+  let total_event_cost = estimated_cycles_for_event_send + get_state_value!(cycles_per_event);
 
   // Check each subscription and send a notification if the event matches the filter
   for sub in subscriptions {
@@ -71,7 +74,7 @@ async fn distribute_event(event: Event) {
       };
 
       // Check if the subscriber has sufficient balance, otherwise - remove the subscription filter
-      if !Balances::is_sufficient(subscriber_principal, Nat::from(estimated_cycles_for_event)).unwrap() {
+      if !Balances::is_sufficient(subscriber_principal, Nat::from(total_event_cost)).unwrap() {
         log_with_metrics!(
           "Insufficient balance for subscriber, unsubscribe: {}",
           subscriber_principal
@@ -104,14 +107,14 @@ async fn distribute_event(event: Event) {
           SendNotificationResult::Ok => {
             // if notification was succesfully sent - charge this subscriber
 
-            if Balances::is_sufficient(subscriber_principal, Nat::from(estimated_cycles_for_event)).unwrap() {
-              Balances::reduce(&subscriber_principal, Nat::from(estimated_cycles_for_event)).unwrap();
+            if Balances::is_sufficient(subscriber_principal, Nat::from(total_event_cost)).unwrap() {
+              Balances::reduce(&subscriber_principal, Nat::from(total_event_cost)).unwrap();
             }
 
             log_with_metrics!(
               "Notification sent successfully. ID: {}, Charged: {}",
               notification_id,
-              estimated_cycles_for_event
+              total_event_cost
             );
           }
           SendNotificationResult::Err(error) => {
